@@ -72,7 +72,7 @@ def show_images(imgs, num_rows, num_cols, titles=None, scale=1.5):
     axes = axes.flatten()
     for i, (ax, img) in enumerate(zip(axes, imgs)):
         if torch.is_tensor(img):
-            ax.imshow(img.squeeze().numpy(), cmap='gray')
+            ax.imshow(img.squeeze().numpy())
         else:
             ax.imshow(img, cmap='gray')
         ax.axis('off')
@@ -92,13 +92,19 @@ def get_dataloader_workers():
 if __name__ == "__main__":
 
     train_iter, test_iter = load_data_fashion_mnist(batch_size=32, resize=64)
+
+    # 先打印一个 batch 的形状
     for X, y in train_iter:
         print(X.shape, X.dtype, y.shape, y.dtype)
         break
-    # 显示部分图像
-    # batch_size_show = 18
-    # X, y = next(iter(data.DataLoader(mnist_train, batch_size=batch_size_show)))
-    # show_images(X.reshape(batch_size_show, 28, 28), 2, 9, titles=get_fashion_mnist_labels(y))
+
+    # 再次取出一批图像用于可视化
+    X, y = next(iter(train_iter))  # 注意这里要从 DataLoader 中取出数据
+
+    # 可视化前需注意：如果你用 resize=64，那么每张图像大小就是 64x64，不是 28x28
+    # 所以要改成 reshape(batch_size_show, 64, 64) 或直接不 reshape，用 show_images 直接展示
+    batch_size_show = 18
+    show_images(X[:batch_size_show].squeeze(1), 2, 9, titles=get_fashion_mnist_labels(y[:batch_size_show]))
 
     # # 测试 DataLoader 加载时间
     # batch_size = 256
