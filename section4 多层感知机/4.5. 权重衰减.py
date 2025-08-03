@@ -63,6 +63,7 @@ def main():
     train_concise(0, train_iter, test_iter)
     print("\n使用权重衰减（L2正则）wd=3：")
     train_concise(3, train_iter, test_iter)
-
+    print("\n使用权重衰减（L2正则）wd=10：")
+    train_concise(10, train_iter, test_iter)
 if __name__ == '__main__':
     main()
