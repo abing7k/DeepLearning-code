@@ -37,4 +37,9 @@ d2l = sys.modules[__name__]
 
 x = torch.arange(12)
 
+
+print(torch.backends.mps.is_available())  # 是否可用
+print(torch.backends.mps.is_built())      # 编译时是否支持
+
+
 # print(x)
