@@ -110,8 +110,11 @@ def main():
     else:
         device = torch.device("cpu")
 
+    # 训练计时
+    start_time = d2l.Timer()
     # 训练
     train_ch6(net, train_iter, test_iter, num_epochs, lr, device)
+    print(f"Total training time: {start_time.stop():.2f} sec")
     # 确保在 PyCharm 中显示 epoch 曲线
     d2l.plt.show()
 
