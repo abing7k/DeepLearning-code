@@ -55,21 +55,15 @@ def main():
         device = torch.device("cpu")
     net.to(device)
 
-    # Define loss function
-    loss = nn.CrossEntropyLoss()
 
     # Train the model for 5 epochs
     num_epochs = 5
     lr = 0.01
     print("Starting training...")
     start_time = time.time()
-    for epoch in range(num_epochs):
-        d2l.train_ch6(net, train_iter, test_iter, 1, lr, device)
-        percent = (epoch + 1) / num_epochs * 100
-        print(f"Progress: {percent:.1f}% completed")
+    d2l.train_ch6(net, train_iter, test_iter, num_epochs, lr, device)
     end_time = time.time()
-    elapsed = end_time - start_time
-    print(f"Total training time: {elapsed:.2f} seconds")
+    print(f"Total training time: {end_time - start_time:.2f} seconds")
     d2l.plt.show()
 
 if __name__ == "__main__":
