@@ -29,7 +29,6 @@ class DenseBlock(nn.Module):
             X = torch.cat((X, Y), dim=1)
         return X
 
-
 # 定义过渡层（Transition Layer）
 # 1×1 卷积降低通道数 + 平均池化降低高和宽
 def transition_block(input_channels, num_channels):
