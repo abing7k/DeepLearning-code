@@ -1,13 +1,14 @@
-# rnn_from_scratch_ch8.py
-# 从零实现的循环神经网络（基于《动手学深度学习》第8章原始代码）
-# 已做的少量改动：
-# 1) 增加设备检测（CUDA / MPS / CPU），并将 d2l.try_gpu() 指向检测到的设备，方便在 PyCharm 中直接运行
-# 2) 增加 main() 入口，打印必要的示例输出
-# 3) 在绘图后调用 d2l.plt.show() 以保证在某些环境（如 PyCharm）中能显示图片
-# 4) 记录训练时间并打印
-# 其它逻辑保持与书上原始代码一致，未擅自更改模型或训练超参数
-
-# 注意：在 PyCharm 中运行前，请确保已经安装好 d2l、torch 等依赖，并配置好 Python 解释器。
+# rnn_from_scratch_d2l.py
+#
+# Minimal, faithful reformatting of the code you provided from the d2l (Dive into Deep Learning) book.
+# I kept the algorithm and function names unchanged, only added:
+#  - a `main()` entry point
+#  - device detection (CUDA / MPS / CPU)
+#  - training time measurements
+#  - explicit plt.show() after plotting so images appear in PyCharm
+#  - clear comments and small I/O prints for shape / example outputs
+#
+# Run this file in PyCharm (or any Python environment with the `d2l` package installed).
 
 
 import math
@@ -15,41 +16,26 @@ import time
 import torch
 from torch import nn
 from torch.nn import functional as F
+import matplotlib.pyplot as plt
 from d2l import torch as d2l
 
 
-# 原始参数与数据准备（保持书上实现）
-batch_size, num_steps = 32, 35
-train_iter, vocab = d2l.load_data_time_machine(batch_size, num_steps)
-
-
-# 设备检测：优先 CUDA，再看 MPS，最后回落到 CPU
-# 我们不改动书上大量使用 d2l.try_gpu() 的位置，因此把 d2l.try_gpu 绑定为返回检测到的设备
-def detect_device():
+# ---------------------- Utility: device detection -------------------------
+def get_device():
+    """Detect an available device: CUDA -> MPS -> CPU."""
     if torch.cuda.is_available():
         return torch.device('cuda')
-    # pytorch mps 后端可能不存在于某些环境，先做保护性判断
+    # PyTorch MPS backend (Apple Silicon)
     if hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
         return torch.device('mps')
     return torch.device('cpu')
 
-DEVICE = detect_device()
-# 将 d2l.try_gpu 修改为返回我们检测到的设备，尽量不改动后续代码中对 d2l.try_gpu() 的调用
-d2l.try_gpu = lambda: DEVICE
 
-# 打印设备信息
-print(f"Using device: {DEVICE}")
+# ---------------------- One-hot example & shape checks -------------------
+# (kept from original code; useful sanity checks printed in main)
 
 
-# 示例：独热编码
-# 这部分与书上示例相同，用于展示 F.one_hot 的行为
-X_demo = torch.arange(10).reshape((2, 5))
-print('示例 X_demo:')
-print(X_demo)
-print('F.one_hot(X_demo.T, 28).shape =', F.one_hot(X_demo.T, 28).shape)
-
-
-# 初始化模型参数
+# ---------------------- Parameter initialization -------------------------
 
 def get_params(vocab_size, num_hiddens, device):
     num_inputs = num_outputs = vocab_size
@@ -71,13 +57,11 @@ def get_params(vocab_size, num_hiddens, device):
     return params
 
 
-# RNN 状态初始化
+# ---------------------- RNN state and forward ----------------------------
 
 def init_rnn_state(batch_size, num_hiddens, device):
     return (torch.zeros((batch_size, num_hiddens), device=device), )
 
-
-# rnn 单步计算函数（tanh 激活），输入/输出形状与书中一致
 
 def rnn(inputs, state, params):
     # inputs的形状：(时间步数量，批量大小，词表大小)
@@ -92,9 +76,8 @@ def rnn(inputs, state, params):
     return torch.cat(outputs, dim=0), (H,)
 
 
-# 包装为类，保持书上实现
-
-class RNNModelScratch: #@save
+# ---------------------- Model wrapper (from-scratch) --------------------
+class RNNModelScratch:  # @save
     """从零开始实现的循环神经网络模型"""
     def __init__(self, vocab_size, num_hiddens, device,
                  get_params, init_state, forward_fn):
@@ -103,6 +86,7 @@ class RNNModelScratch: #@save
         self.init_state, self.forward_fn = init_state, forward_fn
 
     def __call__(self, X, state):
+        # X is expected with shape: (batch_size, num_steps)
         X = F.one_hot(X.T, self.vocab_size).type(torch.float32)
         return self.forward_fn(X, state, self.params)
 
@@ -110,23 +94,10 @@ class RNNModelScratch: #@save
         return self.init_state(batch_size, self.num_hiddens, device)
 
 
-# 检查输出形状是否正确（与书中一致），并打印
+# ---------------------- Prediction helper -------------------------------
 
-num_hiddens = 512
-net = RNNModelScratch(len(vocab), num_hiddens, d2l.try_gpu(), get_params,
-                      init_rnn_state, rnn)
-state = net.begin_state(X_demo.shape[0], d2l.try_gpu())
-Y, new_state = net(X_demo.to(d2l.try_gpu()), state)
-print('\n-- 输出形状检查 --')
-print('Y.shape =', Y.shape)
-print('len(new_state) =', len(new_state))
-print('new_state[0].shape =', new_state[0].shape)
-
-
-# 预测函数（prefix 后生成新字符），与书中一致
-
-def predict_ch8(prefix, num_preds, net, vocab, device):  #@save
-    """在prefix后面生成新字符"""
+def predict_ch8(prefix, num_preds, net, vocab, device):  # @save
+    """在prefix后面生成新字符（按原书实现）"""
     state = net.begin_state(batch_size=1, device=device)
     outputs = [vocab[prefix[0]]]
     get_input = lambda: torch.tensor([outputs[-1]], device=device).reshape((1, 1))
@@ -138,15 +109,11 @@ def predict_ch8(prefix, num_preds, net, vocab, device):  #@save
         outputs.append(int(y.argmax(dim=1).reshape(1)))
     return ''.join([vocab.idx_to_token[i] for i in outputs])
 
-# 预测演示（模型尚未训练，输出会很荒谬），打印示例
-print('\n-- 预测示例（未训练模型） --')
-print(predict_ch8('time traveller ', 10, net, vocab, d2l.try_gpu()))
 
+# ---------------------- Gradient clipping -------------------------------
 
-# 梯度裁剪（与书中一致）
-
-def grad_clipping(net, theta):  #@save
-    """裁剪梯度"""
+def grad_clipping(net, theta):  # @save
+    """裁剪梯度，接受从零实现的模型或nn.Module"""
     if isinstance(net, nn.Module):
         params = [p for p in net.parameters() if p.requires_grad]
     else:
@@ -157,10 +124,10 @@ def grad_clipping(net, theta):  #@save
             param.grad[:] *= theta / norm
 
 
-# 训练一个 epoch：与书中 train_epoch_ch8 保持一致
-# 注意：这里会在每个小批量（X, Y）前对 state 做 detach，以限制反向传播的时间步
+# ---------------------- Training helpers --------------------------------
+# train_epoch_ch8 与 train_ch8 基本沿用原书实现，加入了训练速度和timing打印
 
-#@save
+# @save
 def train_epoch_ch8(net, train_iter, loss, updater, device, use_random_iter):
     """训练网络一个迭代周期（定义见第8章）"""
     state, timer = None, d2l.Timer()
@@ -194,14 +161,10 @@ def train_epoch_ch8(net, train_iter, loss, updater, device, use_random_iter):
         metric.add(l * y.numel(), y.numel())
     return math.exp(metric[0] / metric[1]), metric[1] / timer.stop()
 
-
-# 训练函数 train_ch8（支持从零实现与高级API）
-# 为了在 PyCharm 中能显示图像，在训练完成后调用 d2l.plt.show()
-
-#@save
+# @save
 def train_ch8(net, train_iter, vocab, lr, num_epochs, device,
               use_random_iter=False):
-    """训练模型（定义见第8章）"""
+    """训练模型（定义见第8章），并返回最后困惑度和词元/秒"""
     loss = nn.CrossEntropyLoss()
     animator = d2l.Animator(xlabel='epoch', ylabel='perplexity',
                             legend=['train'], xlim=[10, num_epochs])
@@ -217,51 +180,66 @@ def train_ch8(net, train_iter, vocab, lr, num_epochs, device,
         ppl, speed = train_epoch_ch8(
             net, train_iter, loss, updater, device, use_random_iter)
         if (epoch + 1) % 10 == 0:
-            print(predict('time traveller'))
+            print(f'[epoch {epoch+1}] sample prediction: {predict("time traveller")}')
             animator.add(epoch + 1, [ppl])
+    # 确保图像在PyCharm等环境中显示
+    try:
+        plt.show()
+    except Exception:
+        pass
     print(f'困惑度 {ppl:.1f}, {speed:.1f} 词元/秒 {str(device)}')
+    print('Final predictions:')
     print(predict('time traveller'))
     print(predict('traveller'))
-    # 绘图展示（在某些环境下必须显式调用才能看到图）
-    try:
-        d2l.plt.show()
-    except Exception:
-        # 若 d2l.plt 不可用或绘图失败，不抛出异常
-        pass
+    return ppl, speed
 
 
-# 主函数：按书上顺序运行示例与训练
+# ---------------------- Main: put everything together -------------------
 
 def main():
-    # 训练配置与运行（保持书上参数）
+    device = get_device()
+    print('Detected device:', device)
+
+    # Basic dataset and data loader as in original code
+    batch_size, num_steps = 32, 35
+    train_iter, vocab = d2l.load_data_time_machine(batch_size, num_steps)
+
+    # One-hot examples / shape checks from original notebook
+    print('\nOne-hot demo and shape checks:')
+    print('F.one_hot([0,2]) =>', F.one_hot(torch.tensor([0, 2]), len(vocab)))
+    X = torch.arange(10).reshape((2, 5))
+    print('one_hot(X.T, 28).shape =>', F.one_hot(X.T, 28).shape)
+
+    # 初始化并测试模型输出形状
+    num_hiddens = 512
+    net = RNNModelScratch(len(vocab), num_hiddens, device, get_params,
+                          init_rnn_state, rnn)
+    state = net.begin_state(X.shape[0], device)
+    Y, new_state = net(X.to(device), state)
+    print('\nShape checks for model outputs:')
+    print('Y.shape =>', Y.shape)
+    print('len(new_state) =>', len(new_state))
+    print('new_state[0].shape =>', new_state[0].shape)
+
+    # 训练（按原始参数）：num_epochs=500, lr=1
     num_epochs, lr = 500, 1
+    print('\nStart training (sequential partitioning)')
+    start = time.time()
+    ppl, speed = train_ch8(net, train_iter, vocab, lr, num_epochs, device)
+    duration = time.time() - start
+    print(f'Training finished in {duration:.1f} seconds ({duration/60:.2f} minutes).')
 
-    print('\n-- 开始训练：顺序分区（use_random_iter=False） --')
-    # net 已定义为 RNNModelScratch(len(vocab), num_hiddens, ...)
-    start_time = time.time()
-    train_ch8(net, train_iter, vocab, lr, num_epochs, d2l.try_gpu())
-    elapsed = time.time() - start_time
-    print(f'顺序分区训练总耗时: {elapsed:.1f} 秒')
+    # 随机抽样训练，重新初始化模型
+    print('\nStart training (random sampling) — reinitializing the network')
+    net = RNNModelScratch(len(vocab), num_hiddens, device, get_params,
+                          init_rnn_state, rnn)
+    start = time.time()
+    ppl2, speed2 = train_ch8(net, train_iter, vocab, lr, num_epochs, device,
+                             use_random_iter=True)
+    duration2 = time.time() - start
+    print(f'Random-iter training finished in {duration2:.1f} seconds ({duration2/60:.2f} minutes).')
 
-    # 显示一次图（train_ch8 内已有 plt.show()，此处为保险起见再次调用）
-    try:
-        d2l.plt.show()
-    except Exception:
-        pass
-
-    print('\n-- 现在使用随机抽样方法训练（use_random_iter=True）：重新初始化模型并训练 --')
-    net2 = RNNModelScratch(len(vocab), num_hiddens, d2l.try_gpu(), get_params,
-                           init_rnn_state, rnn)
-    start_time2 = time.time()
-    train_ch8(net2, train_iter, vocab, lr, num_epochs, d2l.try_gpu(),
-              use_random_iter=True)
-    elapsed2 = time.time() - start_time2
-    print(f'随机抽样训练总耗时: {elapsed2:.1f} 秒')
-
-    try:
-        d2l.plt.show()
-    except Exception:
-        pass
+    print('\nAll done.')
 
 if __name__ == '__main__':
     main()
