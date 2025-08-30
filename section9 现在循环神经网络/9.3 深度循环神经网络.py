@@ -24,7 +24,7 @@ def main():
     # ======================
     # 2. 定义超参数
     # ======================
-    vocab_size, num_hiddens, num_layers = len(vocab), 256, 3
+    vocab_size, num_hiddens, num_layers = len(vocab), 256, 2
     num_inputs = vocab_size
     device = get_device()
     print(f"Using device: {device}")
