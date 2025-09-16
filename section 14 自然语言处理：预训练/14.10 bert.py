@@ -26,7 +26,7 @@ def read_wiki(data_dir):
     file_path = os.path.join(data_dir, 'wiki.train.tokens')
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"文件 {file_path} 不存在，请确保数据已放置在正确路径。")
-    with open(file_path, 'r') as f:
+    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:  # win上要用 encoding='utf-8'
         lines = f.readlines()
     # 过滤掉空行
     lines = [l.strip() for l in lines if len(l.strip()) > 0 and not l.startswith('=')]
@@ -249,8 +249,10 @@ def train_bert(train_iter, net, loss, vocab, device, num_steps):
     step = 0
     timer.start()
     for batch in train_iter:
+        # 🔑 全部送到 device
         mlm_X, segments, pred_positions, mlm_Y, nsp_Y, tokens = [x.to(device) for x in batch]
-        valid_lens = (tokens != vocab['<pad>']).sum(dim=1)
+        # 🔑 valid_lens 也要在 device
+        valid_lens = (tokens != vocab['<pad>']).sum(dim=1).to(device)
         optimizer.zero_grad()
         encoded_X, mlm_Y_hat, nsp_Y_hat = net(mlm_X, segments, valid_lens, pred_positions)
         # MLM loss
@@ -278,7 +280,7 @@ def train_bert(train_iter, net, loss, vocab, device, num_steps):
     d2l.plt.title('BERT Pretraining Loss')
     d2l.plt.show()
 
-# ------------------ main 演示部分 ------------------
+
 def main():
     # 1. 加载数据
     batch_size, max_len = 8, 64
@@ -289,20 +291,21 @@ def main():
     # 2. 演示 BERTEncoder
     num_hiddens, ffn_num_hiddens, num_heads, num_layers = 96, 96, 4, 2
     dropout = 0.2
-    net = BERTEncoder(len(vocab), num_hiddens, ffn_num_hiddens, num_heads, num_layers, dropout, max_len, num_hiddens)
+    net = BERTEncoder(len(vocab), num_hiddens, ffn_num_hiddens, num_heads, num_layers, dropout, max_len, num_hiddens).to(device)
+
     for batch in train_iter:
         tokens_X, segments_X, pred_positions_X, mlm_Y, nsp_Y, tokens = [x.to(device) for x in batch]
-        valid_lens = (tokens != vocab['<pad>']).sum(dim=1)
+        valid_lens = (tokens != vocab['<pad>']).sum(dim=1).to(device)   # 🔑
         out = net(tokens_X, segments_X, valid_lens)
         print('BERTEncoder输出 shape:', out.shape)
         break
 
     # 3. 演示 MaskLM 和 NextSentencePred
-    masklm = MaskLM(len(vocab), num_hiddens)
-    nsp = NextSentencePred(num_hiddens)
+    masklm = MaskLM(len(vocab), num_hiddens).to(device)   # 🔑
+    nsp = NextSentencePred(num_hiddens).to(device)        # 🔑
     for batch in train_iter:
         tokens_X, segments_X, pred_positions_X, mlm_Y, nsp_Y, tokens = [x.to(device) for x in batch]
-        valid_lens = (tokens != vocab['<pad>']).sum(dim=1)
+        valid_lens = (tokens != vocab['<pad>']).sum(dim=1).to(device)   # 🔑
         encoded_X = net(tokens_X, segments_X, valid_lens)
         mlm_out = masklm(encoded_X, pred_positions_X)
         nsp_out = nsp(encoded_X)
@@ -311,10 +314,10 @@ def main():
         break
 
     # 4. 构建 BERTModel 并前向
-    bert = BERTModel(len(vocab), num_hiddens, ffn_num_hiddens, num_heads, num_layers, dropout, max_len, num_hiddens)
+    bert = BERTModel(len(vocab), num_hiddens, ffn_num_hiddens, num_heads, num_layers, dropout, max_len, num_hiddens).to(device)
     for batch in train_iter:
         tokens_X, segments_X, pred_positions_X, mlm_Y, nsp_Y, tokens = [x.to(device) for x in batch]
-        valid_lens = (tokens != vocab['<pad>']).sum(dim=1)
+        valid_lens = (tokens != vocab['<pad>']).sum(dim=1).to(device)   # 🔑
         encoded_X, mlm_Y_hat, nsp_Y_hat = bert(tokens_X, segments_X, valid_lens, pred_positions_X)
         print('BERTModel编码 shape:', encoded_X.shape)
         print('BERTModel MLM输出 shape:', mlm_Y_hat.shape)
@@ -335,6 +338,7 @@ def main():
     encoding_pair = get_bert_encoding(bert, test_tokens_a, test_tokens_b, vocab, device)
     print('句对编码 shape:', encoding_pair.shape)
     print('句对编码部分值:', encoding_pair[0, :5, :5].detach().cpu().numpy())
+
 
 if __name__ == '__main__':
     main()
