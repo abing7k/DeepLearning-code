@@ -58,6 +58,7 @@ class WikiTextDataset(Dataset):
         # 句对采样
         self.vocab = vocab
         self.max_len = max_len
+        self.max_pred = max(1, round(max_len * 0.15))
         self.all_segments = []
         self.is_next = []
         self._prepare_segments(lines)
@@ -110,6 +111,13 @@ class WikiTextDataset(Dataset):
         segments += [0] * padding_len
         # MLM遮盖
         (mlm_input_ids, pred_positions, mlm_labels) = self._get_mlm(input_ids)
+        # 补齐或截断 pred_positions 和 mlm_labels
+        if len(pred_positions) < self.max_pred:
+            pred_positions += [0] * (self.max_pred - len(pred_positions))
+            mlm_labels += [0] * (self.max_pred - len(mlm_labels))
+        else:
+            pred_positions = pred_positions[:self.max_pred]
+            mlm_labels = mlm_labels[:self.max_pred]
         return (torch.tensor(mlm_input_ids), torch.tensor(segments),
                 torch.tensor(pred_positions), torch.tensor(mlm_labels),
                 torch.tensor(self.is_next[idx]), torch.tensor(input_ids))
