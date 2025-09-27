@@ -92,7 +92,8 @@ def train_with_data_aug(train_augs, test_augs, net,
     train_ch13(net, train_iter, test_iter, loss, trainer,
                num_epochs, devices)
 
-import torch
+
+
 
 def try_all_gpus():
     devices = [torch.device(f'cuda:{i}') for i in range(torch.cuda.device_count())]
