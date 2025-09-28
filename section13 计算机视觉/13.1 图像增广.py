@@ -124,30 +124,30 @@ def main():
     d2l.plt.imshow(img)
     d2l.plt.show()
 
-    # ===== 13.1.1 常用增广方法 =====
-    # 左右翻转
-    apply(img, torchvision.transforms.RandomHorizontalFlip())
-    # 上下翻转
-    apply(img, torchvision.transforms.RandomVerticalFlip())
-    # 随机裁剪并缩放到200x200
-    shape_aug = torchvision.transforms.RandomResizedCrop(
-        (200, 200), scale=(0.1, 1), ratio=(0.5, 2))
-    apply(img, shape_aug)
-    # 改变亮度
-    apply(img, torchvision.transforms.ColorJitter(
-        brightness=0.5, contrast=0, saturation=0, hue=0))
-    # 改变色调
-    apply(img, torchvision.transforms.ColorJitter(
-        brightness=0, contrast=0, saturation=0, hue=0.5))
-    # 同时改变多项颜色属性
-    color_aug = torchvision.transforms.ColorJitter(
-        brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
-    apply(img, color_aug)
-    # 组合多种增广
-    augs = torchvision.transforms.Compose([
-        torchvision.transforms.RandomHorizontalFlip(),
-        color_aug, shape_aug])
-    apply(img, augs)
+    # # ===== 13.1.1 常用增广方法 =====
+    # # 左右翻转
+    # apply(img, torchvision.transforms.RandomHorizontalFlip())
+    # # 上下翻转
+    # apply(img, torchvision.transforms.RandomVerticalFlip())
+    # # 随机裁剪并缩放到200x200
+    # shape_aug = torchvision.transforms.RandomResizedCrop(
+    #     (200, 200), scale=(0.1, 1), ratio=(0.5, 2))
+    # apply(img, shape_aug)
+    # # 改变亮度
+    # apply(img, torchvision.transforms.ColorJitter(
+    #     brightness=0.5, contrast=0, saturation=0, hue=0))
+    # # 改变色调
+    # apply(img, torchvision.transforms.ColorJitter(
+    #     brightness=0, contrast=0, saturation=0, hue=0.5))
+    # # 同时改变多项颜色属性
+    # color_aug = torchvision.transforms.ColorJitter(
+    #     brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
+    # apply(img, color_aug)
+    # # 组合多种增广
+    # augs = torchvision.transforms.Compose([
+    #     torchvision.transforms.RandomHorizontalFlip(),
+    #     color_aug, shape_aug])
+    # apply(img, augs)
 
     # 仅训练集使用增广：随机左右翻转 + ToTensor
     train_augs = torchvision.transforms.Compose([
