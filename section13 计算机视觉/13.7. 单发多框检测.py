@@ -37,7 +37,7 @@ def bbox_predictor(num_inputs: int, num_anchors: int) -> nn.Conv2d:
 
 def flatten_pred(pred: torch.Tensor) -> torch.Tensor:
     """将通道维移到最后，再展平为二维 (batch, -1)。确保内存连续，兼容 MPS。"""
-    t = pred.permute(0, 2, 3, 1).contiguous()
+    t = pred.permute(0, 2, 3, 1)
     return t.reshape(t.size(0), -1)
 
 
@@ -123,24 +123,24 @@ class TinySSD(nn.Module):
                 getattr(self, f'bbox_{i}')
             )
         anchors = torch.cat(anchors, dim=1)
-        cls_preds = concat_preds(cls_preds).contiguous()
+        cls_preds = concat_preds(cls_preds)
         cls_preds = cls_preds.reshape(cls_preds.shape[0], -1, self.num_classes + 1)
-        bbox_preds = concat_preds(bbox_preds).contiguous()
+        bbox_preds = concat_preds(bbox_preds)
         return anchors, cls_preds, bbox_preds
 
 
 def calc_loss(cls_preds, cls_labels, bbox_preds, bbox_labels, bbox_masks,
               cls_loss, bbox_loss):
     batch_size, num_classes = cls_preds.shape[0], cls_preds.shape[2]
-    cls_inputs = cls_preds.contiguous().reshape(-1, num_classes)
-    cls_targets = cls_labels.contiguous().reshape(-1)
+    cls_inputs = cls_preds.reshape(-1, num_classes)
+    cls_targets = cls_labels.reshape(-1)
     cls_vals = cls_loss(cls_inputs, cls_targets)
-    cls = cls_vals.contiguous().reshape(batch_size, -1).mean(dim=1)
+    cls = cls_vals.reshape(batch_size, -1).mean(dim=1)
 
-    bbox_inputs = (bbox_preds * bbox_masks).contiguous()
-    bbox_targets = (bbox_labels * bbox_masks).contiguous()
+    bbox_inputs = bbox_preds * bbox_masks
+    bbox_targets = bbox_labels * bbox_masks
     bbox_vals = bbox_loss(bbox_inputs, bbox_targets)
-    bbox = bbox_vals.contiguous().mean(dim=1)
+    bbox = bbox_vals.mean(dim=1)
     return cls + bbox
 
 
@@ -181,20 +181,14 @@ def train_tiny_ssd(net: TinySSD,
             trainer.zero_grad()
             X, Y = features.to(device), target.to(device)
             anchors, cls_preds, bbox_preds = net(X)
-            anchors = anchors.contiguous()
-            cls_preds = cls_preds.contiguous()
-            bbox_preds = bbox_preds.contiguous()
             bbox_labels, bbox_masks, cls_labels = d2l.multibox_target(anchors, Y)
-            bbox_labels = bbox_labels.contiguous()
-            bbox_masks = bbox_masks.contiguous()
-            cls_labels = cls_labels.contiguous()
             l = calc_loss(cls_preds, cls_labels, bbox_preds, bbox_labels, bbox_masks,
                           cls_loss, bbox_loss)
             l.mean().backward()
             trainer.step()
             metric.add(cls_eval(cls_preds, cls_labels), cls_labels.numel(),
                        bbox_eval(bbox_preds, bbox_labels, bbox_masks), bbox_labels.numel())
-
+            
         cls_err = 1 - metric[0] / metric[1]
         bbox_mae = metric[2] / metric[3]
         cls_err_history.append(cls_err)
