@@ -12,11 +12,8 @@
 - 训练阶段使用自定义设备检测并输出耗时
 - 图像展示统一调用 d2l.plt.show()，便于在 PyCharm 直接运行
 """
-import importlib.util
 import os
 import time
-from pathlib import Path
-from typing import Tuple
 
 import torch
 from torch import nn
@@ -25,6 +22,7 @@ import torchvision
 from torchvision import transforms
 from torchvision.transforms import functional as TF
 from d2l import torch as d2l
+import chapter13_voc as voc_module
 
 
 # ---------------------------
@@ -41,12 +39,7 @@ def get_preferred_device() -> torch.device:
 
 def import_voc_module():
     """动态加载 13.9 章节的 VOC 数据处理脚本。"""
-    current_dir = Path(__file__).resolve().parent
-    voc_path = current_dir / '13.9. 语义分割和数据集.py'
-    spec = importlib.util.spec_from_file_location('chapter13_voc', voc_path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)  # type: ignore[arg-type]
-    return module
+    return voc_module
 
 
 # ---------------------------
@@ -276,7 +269,7 @@ def main():
         imgs.append((pred_color.float() / 255))
         imgs.append((label_crop.permute(1, 2, 0) / 255).cpu())
 
-    d2l.show_images(imgs, 3, n, scale=2)
+    d2l.show_images(imgs[::3] + imgs[1::3] + imgs[2::3], 3, n, scale=2);
     d2l.plt.show()
 
 
