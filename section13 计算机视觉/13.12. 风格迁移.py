@@ -222,9 +222,20 @@ def train_style_transfer(net: nn.Sequential,
                 f'tv {history["tv"][-1]:.3f}, '
                 f'total {float(total_l):.3f}'
             )
+            if epoch % 500 == 0 or epoch == num_epochs:
+                with torch.no_grad():
+                    current_img = postprocess(gen_img().detach())
+                d2l.plt.figure()
+                d2l.plt.imshow(current_img)
+                d2l.plt.axis('off')
+                d2l.plt.title(f'Epoch {epoch}')
+                d2l.plt.show()
 
     total_time = time.time() - start_time
     print(f'Total training time: {total_time:.2f} sec on {device}')
+
+
+
     return gen_img().detach()
 
 
@@ -259,11 +270,11 @@ def main():
         lr_decay_epoch=50
     )
 
-    result_img = postprocess(output)
-    d2l.set_figsize()
-    d2l.plt.imshow(result_img)
-    d2l.plt.axis('off')
-    d2l.plt.show()
+    # result_img = postprocess(output)
+    # d2l.set_figsize()
+    # d2l.plt.imshow(result_img)
+    # d2l.plt.axis('off')
+    # d2l.plt.show()
 
 
 if __name__ == '__main__':
