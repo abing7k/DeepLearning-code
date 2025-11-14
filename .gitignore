@@ -197,3 +197,5 @@ environment.yml
 environment.yaml
 /data/
 /.idea/
+
+!section14 自然语言处理：预训练/data
